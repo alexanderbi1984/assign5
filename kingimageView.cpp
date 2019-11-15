@@ -418,7 +418,7 @@ void CKingimageView::Onany()
 }
 
 
-void CKingimageView::OnProcessSegmentation()
+void CKingimageView::OnProcesstrainlabel()
 {
 	// TODO: Add your command handler code here
 	//First, convert RGB to Grey scale
@@ -614,7 +614,7 @@ void CKingimageView::OnProcessSegmentation()
 
 
 
-void CKingimageView::OnProcessErosion()
+void CKingimageView::OnProcessNN()
 {
 	// TODO: Add your command handler code here
 	CKingimageDoc* pDoc = GetDocument();
@@ -662,7 +662,58 @@ void CKingimageView::OnProcessErosion()
 				else
 					H[i*iWidth + j] = 3.1415926 * 2 - theta;
 			}
-		
+    int train_label[2400];
+		for (int s = 0;s < 2400;s++)
+		{
+			int sum = 0;
+			div_t output;
+			output = div(s, 80);
+			int row_num = output.quot;
+			int col_num = output.rem;
+			for (int i = 0;i<4;i++)
+				for (int j = 0;j < 4;j++)
+				{
+					sum = sum + I[(239-(row_num * 4 + i))*iWidth + col_num * 4 + j];
+				}
+			int ave = (int)(sum / 16);
+			if (ave < 125)
+				train_label[s] = 0;
+			else
+			{
+				if (ave < 175)
+					train_label[s] = 1;
+				else
+					train_label[s] = 2;
+			}
+		}
+		int test_label[2400];
+    for (int s=0;s<2400;s++)
+    {
+    // for sth test point, search through trainning point to look for nearest neighbor
+      float min_dist = 100000000; 
+      div_t output;
+			output = div(s+2400, 80);
+			int row_num = output.quot; //row_num for test point
+			int col_num = output.rem;  //col_num for test point
+      for (int t = 0; t<2400;t++)
+      {
+        float dist = 0;
+        div_t output_train;
+			  output_train = div(t, 80);
+			  int row_num_train = output_train.quot;
+			  int col_num_train = output_train.rem;
+        for (int i=0;i<4;i++)
+          for (int j=0;j<4;j++)
+          {
+            dist = dist + (I[(239-(row_num * 4 + i))*iWidth + col_num * 4 + j]-I[(239-(row_num_train * 4 + i))*iWidth + col_num_train * 4 + j])*(I[(239-(row_num * 4 + i))*iWidth + col_num * 4 + j]-I[(239-(row_num_train * 4 + i))*iWidth + col_num_train * 4 + j]);
+          }
+        if (dist < min_dist)
+        {
+          min_dist = dist;
+          test_label[s] = train_label[t];
+        }
+      }
+    }
 		for (int x = 0; x < 100; x++)
 			for (int y = 0; y < 100; y++)
 			{
