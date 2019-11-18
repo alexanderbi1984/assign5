@@ -37,6 +37,7 @@ BEGIN_MESSAGE_MAP(CKingimageView, CScrollView)
 	ON_COMMAND(ID_PROCESS_SEGMENTATION, &CKingimageView::OnProcessSegmentation)*/
 	ON_COMMAND(ID_PROCESS_TRAINLABEL32779, &CKingimageView::OnProcessTrainlabel32779)
 	ON_COMMAND(ID_PROCESS_NN32780, &CKingimageView::OnProcessNn32780)
+	ON_COMMAND(ID_PROCESS_KMEANS, &CKingimageView::OnProcessKmeans)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -600,8 +601,21 @@ void CKingimageView::OnProcessDilation()
 
 
 }
-
-
+float square(float x)
+{
+	return x*x;
+}
+//distance between data point and one cluster
+float distance(int row_num, int col_num, float *cluster,float *I, int width)
+{
+	float distance = 0;
+	for (int i=0;i<4;i++)
+		for (int j = 0;j < 4;j++)
+		{
+			distance = distance + square(I[(239 - (row_num * 4 + i))*width + col_num * 4 + j] - cluster[i * 4 + j]);
+		}
+	return distance;
+}
 
 
 
@@ -873,80 +887,131 @@ void CKingimageView::OnProcessNn32780()
 
 		//}
 		//caculate average vector for each class using training data
-		int sum1[16];
-		int sum2[16];
-		int sum0[16];
-		int size0 = 0;
-		int size1 = 0;
-		int size2 = 0;
-		for (int i = 0;i<4;i++)
-			for (int j = 0;j < 4;j++)
-			{
-				sum0[i * 4 + j] = 0;
-				sum1[i * 4 + j] = 0;
-				sum2[i * 4 + j] = 0;
+		//int sum1[16];
+		//int sum2[16];
+		//int sum0[16];
+		//int size0 = 0;
+		//int size1 = 0;
+		//int size2 = 0;
+		//for (int i = 0;i<4;i++)
+		//	for (int j = 0;j < 4;j++)
+		//	{
+		//		sum0[i * 4 + j] = 0;
+		//		sum1[i * 4 + j] = 0;
+		//		sum2[i * 4 + j] = 0;
 
-			}
-		for (int s = 0; s < 2400;s++)
-		{
-			div_t output;
-			output = div(s, 80);
-			int row_num = output.quot;
-			int col_num = output.rem;
-			if (train_label[s] == 0)
-			{
-				size0++;
-				for (int i = 0;i<4;i++)
-					for (int j = 0;j < 4;j++)
-					{
-						sum0[i * 4 + j] = sum0[4 * i + j] + I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j];
-					}
-			}
-			if (train_label[s] == 1)
-			{
-				size1++;
-				for (int i = 0;i<4;i++)
-					for (int j = 0;j < 4;j++)
-					{
-						sum1[i * 4 + j] = sum1[4 * i + j] + I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j];
-					}
-			}
-			if (train_label[s] == 2)
-			{
-				size2++;
-				for (int i = 0;i<4;i++)
-					for (int j = 0;j < 4;j++)
-					{
-						sum2[i * 4 + j] = sum2[4 * i + j] + I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j];
-					}
-			}
-		}
-		for (int i = 0;i<4;i++)
-			for (int j = 0;j < 4;j++)
-			{
-				sum0[i * 4 + j] = (int)sum0[i * 4 + j] / size0;
-				sum1[i * 4 + j] = (int)sum1[i * 4 + j] / size1;
-				sum2[i * 4 + j] = (int)sum2[i * 4 + j] / size2;
+		//	}
+		//for (int s = 0; s < 2400;s++)
+		//{
+		//	div_t output;
+		//	output = div(s, 80);
+		//	int row_num = output.quot;
+		//	int col_num = output.rem;
+		//	if (train_label[s] == 0)
+		//	{
+		//		size0++;
+		//		for (int i = 0;i<4;i++)
+		//			for (int j = 0;j < 4;j++)
+		//			{
+		//				sum0[i * 4 + j] = sum0[4 * i + j] + I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j];
+		//			}
+		//	}
+		//	if (train_label[s] == 1)
+		//	{
+		//		size1++;
+		//		for (int i = 0;i<4;i++)
+		//			for (int j = 0;j < 4;j++)
+		//			{
+		//				sum1[i * 4 + j] = sum1[4 * i + j] + I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j];
+		//			}
+		//	}
+		//	if (train_label[s] == 2)
+		//	{
+		//		size2++;
+		//		for (int i = 0;i<4;i++)
+		//			for (int j = 0;j < 4;j++)
+		//			{
+		//				sum2[i * 4 + j] = sum2[4 * i + j] + I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j];
+		//			}
+		//	}
+		//}
+		//for (int i = 0;i<4;i++)
+		//	for (int j = 0;j < 4;j++)
+		//	{
+		//		sum0[i * 4 + j] = (int)sum0[i * 4 + j] / size0;
+		//		sum1[i * 4 + j] = (int)sum1[i * 4 + j] / size1;
+		//		sum2[i * 4 + j] = (int)sum2[i * 4 + j] / size2;
 
-			}
-		//image N4, i.e. replace testing vector with the average of the class
+		//	}
+		////image N4, i.e. replace testing vector with the average of the class
+		//for (int s = 0;s < 2400;s++)
+		//{
+		//	div_t output;
+		//	output = div(s + 2400, 80);
+		//	int row_num = output.quot; //row_num for test point
+		//	int col_num = output.rem;  //col_num for test point
+		//	for (int i = 0;i<4;i++)
+		//		for (int j = 0;j < 4;j++)
+		//		{
+		//			if (test_label[s] == 0)
+		//				I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j] = sum0[i * 4 + j];
+		//			if (test_label[s] == 1)
+		//				I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j] = sum1[i * 4 + j];
+		//			if (test_label[s] == 2)
+		//				I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j] = sum2[i * 4 + j];
+		//		}
+		//}
+		//manually cluster testing data
+		int test_label_manual[2400];
 		for (int s = 0;s < 2400;s++)
 		{
+			int sum = 0;
 			div_t output;
-			output = div(s + 2400, 80);
-			int row_num = output.quot; //row_num for test point
-			int col_num = output.rem;  //col_num for test point
+			output = div(s+2400, 80);
+			int row_num = output.quot;
+			int col_num = output.rem;
 			for (int i = 0;i<4;i++)
 				for (int j = 0;j < 4;j++)
 				{
-					if (test_label[s] == 0)
-						I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j] = sum0[i * 4 + j];
-					if (test_label[s] == 1)
-						I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j] = sum1[i * 4 + j];
-					if (test_label[s] == 2)
-						I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j] = sum2[i * 4 + j];
+					sum = sum + I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j];
 				}
+			int ave = (int)(sum / 16);
+			if (ave < 125)
+				test_label_manual[s] = 0;
+			else
+			{
+				if (ave < 175)
+					test_label_manual[s] = 1;
+				else
+					test_label_manual[s] = 2;
+			}
 		}
+		//image T1
+		//for (int s = 0;s < 2400;s++)
+		//{
+		//	div_t output;
+		//	output = div(s + 2400, 80);
+		//	int row_num = output.quot; //row_num for test point
+		//	int col_num = output.rem;  //col_num for test point
+		//	for (int i = 0;i<4;i++)
+		//		for (int j = 0;j < 4;j++)
+		//		{
+		//			if (test_label_manual[s] == 0)
+		//				I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j] = 0;
+		//			if (test_label_manual[s] == 1)
+		//				I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j] = 128;
+		//			if (test_label_manual[s] == 2)
+		//				I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j] = 255;
+		//		}
+		//}
+		//calculate error rate
+		int error = 0;
+		for (int s = 0;s < 2400;s++)
+		{
+			if (test_label[s] != test_label_manual[s])
+				error++;
+		}
+		float error_rate = error / 2400.0;
 		//display the image
 		for (int x = 0; x < iHeight; x++)
 			for (int y = 0; y < iWidth; y++)
@@ -956,6 +1021,259 @@ void CKingimageView::OnProcessNn32780()
 				pImg[x*Wp + y * 3 + 2] = I[x*iWidth + y];
 			}
 	}
+	OnDraw(GetDC());
+
+}
+
+
+void CKingimageView::OnProcessKmeans()
+{
+	// TODO: Add your command handler code here
+	// TODO: Add your command handler code here
+	// TODO: Add your command handler code here
+	CKingimageDoc* pDoc = GetDocument();
+	int iBitPerPixel = pDoc->_bmp->bitsperpixel;
+	int iWidth = pDoc->_bmp->width;
+	int iHeight = pDoc->_bmp->height;
+	BYTE *pImg = pDoc->_bmp->point;
+
+	int Wp = iWidth;
+	if (iBitPerPixel == 8)  ////Grey scale 8 bits image
+	{
+		int r = iWidth % 4;
+		int p = (4 - r) % 4;
+		Wp = iWidth + p;
+	}
+	else if (iBitPerPixel == 24)	// RGB image
+	{
+		int r = (3 * iWidth) % 4;
+		int p = (4 - r) % 4;
+		Wp = 3 * iWidth + p;
+	}
+	if (iBitPerPixel == 24)  ////True color 24bits image
+	{
+		float *H = new float[iWidth*iHeight];
+		float *S = new float[iWidth*iHeight];
+		float *I = new float[iWidth*iHeight];
+
+		for (int i = 0; i < iHeight; i++)
+			for (int j = 0; j < iWidth; j++)
+			{
+
+				int b = pImg[i*Wp + j * 3];      //B
+				int g = pImg[i*Wp + j * 3 + 1];      //G
+				int r = pImg[i*Wp + j * 3 + 2];      //R 
+				I[i*iWidth + j] = (b + g + r) / 3;
+				S[i*iWidth + j] = 1 - 3 * min(b, min(g, b)) / (float)(b + g + r);
+				float theta = acos((double)(r - 0.5*g - 0.5*b) / (float)(pow((pow(r - g, 2) + (r - b)*(g - b)), 0.5)));
+				if (b <= g)
+				{
+					if (b != g || g != r)
+						H[i*iWidth + j] = theta;
+					else
+						H[i*iWidth + j] = -1;
+				}
+				else
+					H[i*iWidth + j] = 3.1415926 * 2 - theta;
+			}
+		// perform k-means on training data when k =3
+		int train_label[2400];
+		float short_distance[2400];
+		// first random select 3 pts as clusters
+		int c1 = rand() % 2400;
+		int c2 = rand() % 2400;
+		int c3 = rand() % 2400;
+		float cluster1[16];
+		float cluster2[16];
+		float cluster3[16];
+		div_t output1;
+		output1 = div(c1, 80);
+		int row_num1 = output1.quot;
+		int col_num1 = output1.rem;
+		div_t output2;
+		output2 = div(c2, 80);
+		int row_num2 = output2.quot;
+		int col_num2 = output2.rem;
+		div_t output3;
+		output3 = div(c3, 80);
+		int row_num3 = output3.quot;
+		int col_num3 = output3.rem;
+		for (int i = 0;i < 4;i++)
+			for (int j = 0;j < 4;j++)
+			{
+				cluster1[i * 4 + j] = I[(239 - (row_num1 * 4 + i))*iWidth + col_num1 * 4 + j];
+				cluster2[i * 4 + j] = I[(239 - (row_num2 * 4 + i))*iWidth + col_num2 * 4 + j];
+				cluster3[i * 4 + j] = I[(239 - (row_num3 * 4 + i))*iWidth + col_num3 * 4 + j];
+			}
+		int max_ite = 5000;
+		for (int i = 0;i < max_ite;i++)
+		{// step 1: assign class label to training data
+			for (int s = 0;s < 2400;s++)
+			{
+				div_t output;
+				output = div(s, 80);
+				int row_num = output.quot;
+				int col_num = output.rem;
+				float d1 = distance(row_num, col_num, cluster1, I, iWidth);
+				float d2 = distance(row_num, col_num, cluster2, I, iWidth);
+				float d3 = distance(row_num, col_num, cluster3, I, iWidth);
+				if (d1 < d2)
+				{
+					if (d1 < d3)
+					{
+						train_label[s] = 1;
+						short_distance[s] = d1;
+					}
+					else
+					{
+						train_label[s] = 3;
+						short_distance[s] = d3;
+					}
+				}
+				else
+				{
+					if (d2 < d3)
+					{
+						train_label[s] = 2;
+						short_distance[s] = d2;
+					}
+					else
+					{
+						train_label[s] = 3;
+						short_distance[s] = d3;
+					}
+				}
+			}
+			//step 2: calculate new cluster.
+			int size1 = 0;
+			int size2 = 0;
+			int size3 = 0;
+			int sum1[16];
+			int sum2[16];
+			int sum3[16];
+			for (int i = 0; i < 16; i++)
+			{
+				sum1[i] = 0;
+				sum2[i] = 0;
+				sum3[i] = 0;
+			}
+			for (int s = 0;s < 2400;s++)
+			{
+				div_t output;
+				output = div(s, 80);
+				int row_num = output.quot;
+				int col_num = output.rem;
+				if (train_label[s] == 1)
+				{
+					size1++;
+					for (int i = 0;i < 4;i++)
+						for (int j = 0;j < 4;j++)
+						{
+							sum1[4 * i + j] = sum1[4 * i + j] + I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j];
+						}
+				}
+				if (train_label[s] == 2)
+				{
+					size2++;
+					for (int i = 0;i < 4;i++)
+						for (int j = 0;j < 4;j++)
+						{
+							sum2[4 * i + j] = sum2[4 * i + j] + I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j];
+						}
+				}
+				if (train_label[s] == 3)
+				{
+					size3++;
+					for (int i = 0;i < 4;i++)
+						for (int j = 0;j < 4;j++)
+						{
+							sum3[4 * i + j] = sum3[4 * i + j] + I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j];
+						}
+				}
+			}
+			for (int i = 0;i < 16;i++)
+			{
+				cluster1[i] = sum1[i] / (float)size1;
+				cluster2[i] = sum2[i] / (float)size2;
+				cluster3[i] = sum3[i] / (float)size3;
+			}
+		}
+		float sum1 = 0;
+		float sum2 = 0;
+		float sum3 = 0;
+		for (int i = 0;i < 16;i++)
+		{
+			sum1 = cluster1[i] + sum1;
+			sum2 = cluster2[i] + sum2;
+			sum3 = cluster3[i] + sum3;
+		}
+
+		float ave1 = sum1 / 16.0;
+		float ave2 = sum2 / 16.0;
+		float ave3 = sum3 / 16.0;
+		int lab[3];
+		if (ave1 <= ave2 && ave2 <= ave3)
+		{
+			lab[0] = 1;
+			lab[1] = 2;
+			lab[2] = 3;
+		}
+		if (ave1 <= ave3 && ave3 <= ave2)
+		{
+			lab[0] = 1;
+			lab[1] = 3;
+			lab[2] = 2;
+		}
+		if (ave2 <= ave1 && ave1 <= ave3)
+		{
+			lab[0] = 2;
+			lab[1] = 1;
+			lab[2] = 3;
+		}
+		if (ave2 <= ave3 && ave3 <= ave1)
+		{
+			lab[0] = 2;
+			lab[1] = 3;
+			lab[2] = 1;
+		}
+		if (ave3 <= ave1 && ave1 <= ave2)
+		{
+			lab[0] = 3;
+			lab[1] = 1;
+			lab[2] = 2;
+		}
+		if (ave3 <= ave2 && ave2 <= ave1)
+		{
+			lab[0] = 3;
+			lab[1] = 2;
+			lab[2] = 1;
+		}
+		for (int s = 0;s < 2400;s++)
+		{
+			div_t output;
+			output = div(s, 80);
+			int row_num = output.quot;
+			int col_num = output.rem;
+			for (int i = 0;i<4;i++)
+				for (int j = 0;j < 4;j++)
+				{
+					if (lab[train_label[s]-1] == 1)
+						I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j] = 255;
+					if (lab[train_label[s] -1]== 2)
+						I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j] = 0;
+					if (lab[train_label[s]-1] == 3)
+						I[(239 - (row_num * 4 + i))*iWidth + col_num * 4 + j] = 128;
+				}
+		}
+		for (int x = 0; x < iHeight; x++)
+			for (int y = 0; y < iWidth; y++)
+			{
+				pImg[x*Wp + y * 3] = I[x*iWidth + y];
+				pImg[x*Wp + y * 3 + 1] = I[x*iWidth + y];
+				pImg[x*Wp + y * 3 + 2] = I[x*iWidth + y];
+			}
+	}
+	
 	OnDraw(GetDC());
 
 }
